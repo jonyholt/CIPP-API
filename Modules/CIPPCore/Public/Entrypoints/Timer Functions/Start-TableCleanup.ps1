@@ -98,6 +98,16 @@ function Start-TableCleanup {
         @{
             FunctionName   = 'TableCleanupTask'
             Type           = 'CleanupRule'
+            TableName      = 'BecRunState'
+            DataTableProps = @{
+                Filter   = "Timestamp lt datetime'$((Get-Date).AddDays(-2).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))'"
+                First    = 10000
+                Property = @('PartitionKey', 'RowKey', 'ETag')
+            }
+        }
+        @{
+            FunctionName   = 'TableCleanupTask'
+            Type           = 'CleanupRule'
             TableName      = 'CippOrchestratorBatch'
             DataTableProps = @{
                 Filter   = "Timestamp lt datetime'$((Get-Date).AddHours(-24).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))'"
@@ -141,15 +151,28 @@ function Start-TableCleanup {
             }
         }
         @{
+            # 5-minute instance health samples and boot markers. Two weeks covers the
+            # diagnostics window (max 14 days) with nothing left over.
+            FunctionName   = 'TableCleanupTask'
+            Type           = 'CleanupRule'
+            TableName      = 'InstanceHealth'
+            DataTableProps = @{
+                Filter   = "PartitionKey eq 'InstanceHealth' and Timestamp lt datetime'$((Get-Date).AddDays(-14).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))'"
+                First    = 10000
+                Property = @('PartitionKey', 'RowKey', 'ETag')
+            }
+        }
+        @{
             FunctionName = 'TableCleanupTask'
             Type         = 'DeleteTable'
-            Tables       = @('knownlocationdb', 'CacheExtensionSync', 'ExtensionSync')
+            Tables       = @('knownlocationdb', 'CacheExtensionSync', 'ExtensionSync', 'cachebpav2')
         }
     )
 
     $InputObject = @{
         Batch            = @($Batch)
         OrchestratorName = 'TableCleanup'
+        Priority         = 8
         SkipLog          = $true
     }
 
